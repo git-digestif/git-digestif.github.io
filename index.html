@@ -143,8 +143,11 @@
     #error { color: #f03c2e; padding: 1em; }
     #token-prompt { padding: 1.5em; margin: 1em; background: #2a1a1a; border: 1px solid #f03c2e44; border-radius: 8px; }
     #token-prompt p { margin: 0.5em 0; line-height: 1.5; }
-    #token-prompt button { padding: 0.4em 1em; background: #f03c2e; color: #fff; border: none; border-radius: 4px; cursor: pointer; }
+    #token-prompt a { color: #f09070; }
+    #token-prompt input { width: min(24em, 80%); padding: 0.4em; font-family: monospace; background: #1a1010; color: #eee; border: 1px solid #f03c2e66; border-radius: 4px; }
+    #token-prompt button { padding: 0.4em 1em; margin-left: 0.5em; background: #f03c2e; color: #fff; border: none; border-radius: 4px; cursor: pointer; }
     #token-prompt button:hover { background: #ff5040; }
+    #token-prompt label { display: block; margin-top: 0.4em; font-size: 0.9em; cursor: pointer; }
 
     #logo {
       display: block; margin: auto auto 1em;
@@ -236,98 +239,37 @@
       catch (e) { return false; }
     }
 
-    // --- OAuth web flow with PKCE ---
-
-    var CLIENT_ID = 'Iv23ctZOujy7Iedc3jzC';
-    var CLIENT_SECRET = '59976c07eac7d3163c3f4294c25a11562711fbc3';
-
-    function base64url(buf) {
-      return btoa(String.fromCharCode.apply(null, new Uint8Array(buf)))
-        .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
-    }
-
-    function startOAuthFlow() {
-      var verifier = base64url(crypto.getRandomValues(new Uint8Array(32)));
-      var state = base64url(crypto.getRandomValues(new Uint8Array(16)));
-      sessionStorage.setItem('oauth-verifier', verifier);
-      sessionStorage.setItem('oauth-state', state);
-      if (location.hash) sessionStorage.setItem('oauth-hash', location.hash);
-      crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier))
-        .then(function (digest) {
-          var challenge = base64url(digest);
-          location.href = 'https://github.com/login/oauth/authorize?' +
-            'client_id=' + CLIENT_ID +
-            '&redirect_uri=' + encodeURIComponent(location.origin + location.pathname) +
-            '&state=' + state +
-            '&code_challenge=' + challenge +
-            '&code_challenge_method=S256';
-        });
-    }
-
-    function exchangeCodeForToken(code) {
-      var verifier = sessionStorage.getItem('oauth-verifier');
-      sessionStorage.removeItem('oauth-verifier');
-      sessionStorage.removeItem('oauth-state');
-      var savedHash = sessionStorage.getItem('oauth-hash') || '';
-      sessionStorage.removeItem('oauth-hash');
-
-      var params = new URLSearchParams();
-      params.set('client_id', CLIENT_ID);
-      params.set('client_secret', CLIENT_SECRET);
-      params.set('code', code);
-      if (verifier) params.set('code_verifier', verifier);
-
-      var xhr = new XMLHttpRequest();
-      xhr.open('POST', 'https://github.com/login/oauth/access_token');
-      xhr.setRequestHeader('Accept', 'application/json');
-      xhr.onload = function () {
-        try {
-          var resp = JSON.parse(xhr.responseText);
-          if (resp.access_token) {
-            ghToken = resp.access_token;
-            localStorage.setItem('gh-token', ghToken);
-            history.replaceState(null, '', location.pathname + savedHash);
-            init();
-            return;
-          }
-        } catch (e) {}
-        history.replaceState(null, '', location.pathname + savedHash);
-        showAuthPrompt('expired');
-      };
-      xhr.onerror = function () {
-        history.replaceState(null, '', location.pathname + savedHash);
-        showAuthPrompt('expired');
-      };
-      xhr.send(params.toString());
-    }
-
-    // Check for an OAuth callback (?code=...&state=...) on page load.
-    // Returns true if a callback was detected (init will be called after
-    // the token exchange completes).
-    function handleOAuthCallback() {
-      var params = new URLSearchParams(location.search);
-      var code = params.get('code');
-      var state = params.get('state');
-      if (!code) return false;
-      if (state !== sessionStorage.getItem('oauth-state')) return false;
-      exchangeCodeForToken(code);
-      return true;
-    }
-
-    function showAuthPrompt(reason) {
+    function showTokenPrompt(reason) {
       var el = document.getElementById('content');
       el.innerHTML = '';
       var box = document.createElement('div');
       box.id = 'token-prompt';
       var msg = reason === 'expired'
-        ? '<p>Your GitHub session has expired.</p>'
+        ? '<p>Your GitHub personal access token has expired or been revoked.</p>'
         : '<p>The GitHub API rate limit has been exceeded for your IP address.</p>';
       box.innerHTML = msg +
-        '<p>Sign in with GitHub to continue (no special permissions needed, ' +
-        'this only raises your API rate limit):</p>' +
-        '<p><button id="oauth-login">Sign in with GitHub</button></p>';
+        '<p>To continue, create a <strong>fine-grained personal access token</strong> ' +
+        '(no special permissions required) and paste it below:</p>' +
+        '<p><a href="https://github.com/settings/personal-access-tokens/new" ' +
+        'target="_blank" rel="noopener">Create a token on GitHub →</a></p>' +
+        '<p><input id="token-input" type="password" placeholder="github_pat_..." />' +
+        '<button id="token-save">Save</button></p>' +
+        '<p><label><input id="token-remember" type="checkbox" /> ' +
+        'Remember this token in my browser</label></p>' +
+        '<p>The token is sent only to api.github.com.</p>';
       el.appendChild(box);
-      document.getElementById('oauth-login').addEventListener('click', startOAuthFlow);
+      document.getElementById('token-save').addEventListener('click', function () {
+        var val = document.getElementById('token-input').value.trim();
+        if (!val) return;
+        ghToken = val;
+        if (document.getElementById('token-remember').checked) {
+          localStorage.setItem('gh-token', val);
+        }
+        Object.keys(treeCache).forEach(function (k) { delete treeCache[k]; });
+        rootTreeSha = null;
+        document.getElementById('error').textContent = '';
+        init();
+      });
     }
 
     const DIGEST_FILES = [
@@ -354,11 +296,11 @@
           else if (isBadCredentials(xhr)) {
             ghToken = '';
             localStorage.removeItem('gh-token');
-            showAuthPrompt('expired');
+            showTokenPrompt('expired');
             reject(new Error('Token expired or revoked'));
           }
           else if (isRateLimited(xhr)) {
-            showAuthPrompt('rate-limited');
+            showTokenPrompt('rate-limited');
             reject(new Error('API rate limit exceeded'));
           }
           else reject(new Error('GitHub API ' + xhr.status + ': ' + xhr.responseText));
@@ -901,7 +843,7 @@
         document.getElementById('error').textContent = err.message;
       });
     }
-    if (!handleOAuthCallback()) init();
+    init();
   </script>
 </body>
 </html>
