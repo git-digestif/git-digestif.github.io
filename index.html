@@ -18,7 +18,7 @@
     #sidebar {
       width: 220px; min-width: 180px;
       background: #301810; border-right: 1px solid #5a3020;
-      padding: 0;
+      padding: 0; overflow: hidden;
       flex-shrink: 0;
       display: flex; flex-direction: column;
     }
@@ -148,6 +148,12 @@
     #token-prompt button:hover { background: #ff5040; }
     #token-prompt label { display: block; margin-top: 0.4em; font-size: 0.9em; cursor: pointer; }
 
+    #logo {
+      display: block; margin: auto auto 1em;
+      width: 80%; max-width: 180px;
+      opacity: 0.7;
+    }
+
     /* --- responsive: narrow screens --- */
     @media (max-width: 768px) {
       body { flex-direction: column; height: auto; }
@@ -166,6 +172,7 @@
         top: 0.3em; left: 50%;
         letter-spacing: 0.1em;
       }
+      #logo { display: none; }
       #main { padding: 1em; }
     }
   </style>
@@ -184,6 +191,7 @@
       <div class="roller-highlight"></div>
       <div class="roller-items"></div>
     </div>
+    <img id="logo" src="images/git-digestif.png" alt="git digestif">
   </nav>
   <div id="main">
     <div id="nav-bar">
