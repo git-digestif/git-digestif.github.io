@@ -203,6 +203,23 @@
     <div id="error"></div>
   </div>
   <script>
+    // For those who "completely lack humor receptor":
+    // https://lore.kernel.org/git/xmqq8qdogdmu.fsf@gitster.g/
+    (function () {
+      var d = new Date();
+      if (d.getMonth() === 3 && d.getDate() === 1) {
+        var s = document.styleSheets[0];
+        for (var i = 0; i < s.cssRules.length; i++) {
+          var r = s.cssRules[i];
+          if (r.selectorText === '#content::before') {
+            r.style.backgroundImage = r.style.backgroundImage
+              .replace(/incorrect/g, 'correct');
+            break;
+          }
+        }
+      }
+    })();
+
     const OWNER = 'git-digestif';
     const REPO  = 'lore-git-md';
     const API   = 'https://api.github.com';
