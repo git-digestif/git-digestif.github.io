@@ -791,6 +791,37 @@
     }
 
     // --- boot ---
+    function pad(n) { return n < 10 ? '0' + n : '' + n; }
+
+    // Find the most recent daily digest within the last 7 days.
+    function findRecentDigest(years) {
+      var candidates = [];
+      for (var i = 0; i < 7; i++) {
+        var d = new Date();
+        d.setDate(d.getDate() - i);
+        candidates.push({
+          yy: '' + d.getFullYear(),
+          mm: pad(d.getMonth() + 1),
+          dd: pad(d.getDate())
+        });
+      }
+      return candidates.reduce(function (chain, c) {
+        return chain.then(function (found) {
+          if (found) return found;
+          var yearEntry = years.find(function (e) { return e.path === c.yy; });
+          if (!yearEntry) return null;
+          return getTreeEntries(yearEntry.sha).then(function (months) {
+            var monthEntry = months.find(function (e) { return e.path === c.mm; });
+            if (!monthEntry) return null;
+            return getTreeEntries(monthEntry.sha).then(function (days) {
+              return days.find(function (e) { return e.path === c.dd; })
+                ? c.yy + '/' + c.mm + '/' + c.dd : null;
+            });
+          });
+        });
+      }, Promise.resolve(null));
+    }
+
     function init() {
       fetchRootTree().then(function (sha) {
         rootTreeSha = sha;
@@ -798,7 +829,14 @@
           navigateToPath(location.hash);
         } else {
           return getTreeEntries(sha).then(function (entries) {
-            yearRoller.setEntries(entries.filter(function (e) { return e.type === 'tree'; }));
+            var years = entries.filter(function (e) { return e.type === 'tree'; });
+            yearRoller.setEntries(years);
+            return findRecentDigest(years).then(function (hash) {
+              if (hash) {
+                location.hash = hash;
+                navigateToPath(hash);
+              }
+            });
           });
         }
       }).catch(function (err) {
