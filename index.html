@@ -823,8 +823,12 @@
             var monthEntry = months.find(function (e) { return e.path === c.mm; });
             if (!monthEntry) return null;
             return getTreeEntries(monthEntry.sha).then(function (days) {
-              return days.find(function (e) { return e.path === c.dd; })
-                ? c.yy + '/' + c.mm + '/' + c.dd : null;
+              var dayEntry = days.find(function (e) { return e.path === c.dd; });
+              if (!dayEntry) return null;
+              return getTreeEntries(dayEntry.sha).then(function (blobs) {
+                return blobs.find(function (e) { return e.path === 'digest.human.md'; })
+                  ? c.yy + '/' + c.mm + '/' + c.dd : null;
+              });
             });
           });
         });
