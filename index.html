@@ -372,7 +372,7 @@
         e.preventDefault();
         e.stopPropagation();
         location.hash = hashPath;
-        loadBlob(blobEntry.sha, DIGEST_LABELS[blobEntry.path]);
+        navigateToPath(hashPath);
       });
       return btn;
     }
