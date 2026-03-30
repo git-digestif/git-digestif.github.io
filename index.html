@@ -72,7 +72,7 @@
       border-radius: 3px; border: 1px solid #f03c2e;
       color: #f03c2e; background: transparent;
       cursor: pointer; vertical-align: middle;
-      font-style: normal;
+      font-style: normal; text-decoration: none;
     }
     .digest-btn:hover { background: #f03c2e; color: #1c1510; }
     .digest-btn.weekly { border-color: #e8674a; color: #e8674a; }
@@ -359,13 +359,15 @@
     }
 
     function makeDigestBtn(blobEntry, dirPath) {
-      const btn = document.createElement('button');
+      const btn = document.createElement('a');
       btn.className = 'digest-btn';
       if (blobEntry.path === 'digest.weekly.human.md') btn.classList.add('weekly');
       if (blobEntry.path === 'digest.monthly.human.md') btn.classList.add('monthly');
       btn.textContent = DIGEST_LABELS[blobEntry.path];
       var hashPath = dirPath + HASH_SUFFIX[blobEntry.path];
+      btn.href = '#' + hashPath;
       btn.addEventListener('click', function (e) {
+        e.preventDefault();
         e.stopPropagation();
         location.hash = hashPath;
         loadBlob(blobEntry.sha, DIGEST_LABELS[blobEntry.path]);
