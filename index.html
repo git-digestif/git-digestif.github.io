@@ -292,6 +292,9 @@
       <dl>
         <dt><kbd>n</kbd></dt><dd>Next digest</dd>
         <dt><kbd>p</kbd></dt><dd>Previous digest</dd>
+        <dt><kbd>d</kbd></dt><dd>Switch to daily digest</dd>
+        <dt><kbd>w</kbd></dt><dd>Switch to weekly digest</dd>
+        <dt><kbd>m</kbd></dt><dd>Switch to monthly digest</dd>
         <dt><kbd>?</kbd></dt><dd>Show this help</dd>
         <dt><kbd>Esc</kbd></dt><dd>Close this overlay</dd>
       </dl>
@@ -797,6 +800,79 @@
       if (e.target === kbdOverlay) hideShortcuts();
     });
 
+    // Remember the last hash for each digest type so d/w/m can return
+    // to the exact entry the user left, as long as the year/month match.
+    var lastHashByType = {};
+
+    function goTo(hash) {
+      location.hash = hash;
+      navigateToPath(hash);
+    }
+
+    function switchDigestType(targetType) {
+      var hash = location.hash;
+      if (!hash || hash.length < 2) return;
+      var parsed = parseHash(hash);
+      var currentType = DIGEST_LABELS[parsed.file];
+      if (currentType === targetType) return;
+
+      var stripped = hash.replace(/^#?\/?/, '');
+      lastHashByType[currentType] = stripped;
+
+      var currentYM = parsed.pathParts.slice(0, 2).join('/');
+      var saved = lastHashByType[targetType];
+      if (saved) {
+        var savedYM = parseHash(saved).pathParts.slice(0, 2).join('/');
+        if (savedYM === currentYM) {
+          goTo(saved);
+          return;
+        }
+      }
+
+      var parts = parsed.pathParts;
+
+      if (targetType === 'month') {
+        // Try current month, fall back to the previous one.
+        probeDigest([parts[0], parts[1]], 'digest.monthly.human.md')
+          .then(function (h) {
+            if (h) return h;
+            var d = new Date(+parts[0], +parts[1] - 2, 1);
+            return probeDigest(
+              ['' + d.getFullYear(), pad2(d.getMonth() + 1)],
+              'digest.monthly.human.md'
+            );
+          })
+          .then(function (h) { if (h) goTo(h); });
+        return;
+      }
+
+      var day = parts.length >= 3 ? parts[2] : null;
+      if (!day) {
+        var dayEntry = dayRoller.entries[dayRoller.selectedIndex];
+        if (!dayEntry) return;
+        day = dayEntry.path;
+      }
+
+      if (targetType === 'day') {
+        goTo(parts[0] + '/' + parts[1] + '/' + day);
+        return;
+      }
+
+      // Weekly: probe backward from the current day to find the most
+      // recent weekly digest (the end-of-week entry, at most 6 days back).
+      (function tryOffset(offset) {
+        if (offset < -6) return;
+        var d = new Date(+parts[0], +parts[1] - 1, +day + offset);
+        probeDigest(
+          ['' + d.getFullYear(), pad2(d.getMonth() + 1), pad2(d.getDate())],
+          'digest.weekly.human.md'
+        ).then(function (h) {
+          if (h) goTo(h);
+          else tryOffset(offset - 1);
+        });
+      })(0);
+    }
+
     document.addEventListener('keydown', function (e) {
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
       if (e.ctrlKey || e.altKey || e.metaKey) return;
@@ -818,6 +894,15 @@
             location.hash = prevTarget;
             navigateToPath(prevTarget);
           }
+          break;
+        case 'd':
+          switchDigestType('day');
+          break;
+        case 'w':
+          switchDigestType('week');
+          break;
+        case 'm':
+          switchDigestType('month');
           break;
       }
     });
