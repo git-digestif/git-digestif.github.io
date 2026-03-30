@@ -174,6 +174,62 @@
       opacity: 0.7;
     }
 
+    /* --- keyboard shortcut hint --- */
+    #kbd-hint {
+      position: fixed; bottom: 1em; right: 1em;
+      font-size: 0.75em; color: rgba(220, 200, 180, 0.35);
+      cursor: pointer; z-index: 10;
+      transition: color 0.2s ease;
+    }
+    #kbd-hint:hover { color: rgba(220, 200, 180, 0.7); }
+    #kbd-hint kbd {
+      font-family: inherit; font-size: 0.9em;
+      border: 1px solid rgba(220, 200, 180, 0.25);
+      border-radius: 3px; padding: 0.1em 0.35em;
+    }
+
+    /* --- keyboard shortcut overlay --- */
+    #kbd-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(10, 6, 4, 0.75);
+      backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+      z-index: 100;
+      justify-content: center; align-items: center;
+    }
+    #kbd-overlay.visible { display: flex; }
+    #kbd-overlay .kbd-dialog {
+      background: rgba(44, 28, 20, 0.95);
+      border: 1px solid rgba(90, 48, 32, 0.5);
+      border-radius: 12px; padding: 2em 2.5em;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+      max-width: 22em; width: 90%;
+      position: relative;
+    }
+    #kbd-overlay h2 {
+      margin: 0 0 1em; border: none; padding: 0;
+      box-shadow: none; font-size: 1.1em;
+      color: rgba(220, 200, 180, 0.9);
+    }
+    #kbd-overlay .kbd-close {
+      position: absolute; top: 0.6em; right: 0.8em;
+      background: none; border: none; color: rgba(220, 200, 180, 0.5);
+      font-size: 1.3em; cursor: pointer; line-height: 1;
+      transition: color 0.2s ease;
+    }
+    #kbd-overlay .kbd-close:hover { color: #f03c2e; }
+    #kbd-overlay dl { margin: 0; }
+    #kbd-overlay dt {
+      float: left; clear: left; width: 4.5em;
+      font-weight: 600; color: #f03c2e;
+    }
+    #kbd-overlay dt kbd {
+      font-family: inherit;
+      border: 1px solid rgba(240, 60, 46, 0.3);
+      border-radius: 4px; padding: 0.1em 0.4em;
+      background: rgba(240, 60, 46, 0.08);
+    }
+    #kbd-overlay dd { margin: 0 0 0.6em 5em; color: #ddd; }
+
     /* --- responsive: narrow screens --- */
     @media (max-width: 768px) {
       body { flex-direction: column; height: auto; }
@@ -225,6 +281,21 @@
       <button class="nav-next" disabled>Next ▶</button>
     </div>
     <div id="error"></div>
+  </div>
+  <div id="kbd-hint" title="Keyboard shortcuts available">
+    Press <kbd>?</kbd> for shortcuts
+  </div>
+  <div id="kbd-overlay">
+    <div class="kbd-dialog">
+      <button class="kbd-close" aria-label="Close">&times;</button>
+      <h2>Keyboard shortcuts</h2>
+      <dl>
+        <dt><kbd>n</kbd></dt><dd>Next digest</dd>
+        <dt><kbd>p</kbd></dt><dd>Previous digest</dd>
+        <dt><kbd>?</kbd></dt><dd>Show this help</dd>
+        <dt><kbd>Esc</kbd></dt><dd>Close this overlay</dd>
+      </dl>
+    </div>
   </div>
   <script>
     // For those who "completely lack humor receptor":
@@ -711,6 +782,44 @@
           navigateToPath(nextTarget);
         }
       });
+    });
+
+    // --- keyboard shortcuts ---
+    var kbdOverlay = document.getElementById('kbd-overlay');
+    var kbdHint = document.getElementById('kbd-hint');
+
+    function showShortcuts() { kbdOverlay.classList.add('visible'); }
+    function hideShortcuts() { kbdOverlay.classList.remove('visible'); }
+
+    kbdHint.addEventListener('click', showShortcuts);
+    kbdOverlay.querySelector('.kbd-close').addEventListener('click', hideShortcuts);
+    kbdOverlay.addEventListener('click', function (e) {
+      if (e.target === kbdOverlay) hideShortcuts();
+    });
+
+    document.addEventListener('keydown', function (e) {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+      if (e.ctrlKey || e.altKey || e.metaKey) return;
+      switch (e.key) {
+        case '?':
+          showShortcuts();
+          break;
+        case 'Escape':
+          hideShortcuts();
+          break;
+        case 'n':
+          if (nextTarget) {
+            location.hash = nextTarget;
+            navigateToPath(nextTarget);
+          }
+          break;
+        case 'p':
+          if (prevTarget) {
+            location.hash = prevTarget;
+            navigateToPath(prevTarget);
+          }
+          break;
+      }
     });
 
     function pad2(n) { return n < 10 ? '0' + n : '' + n; }
