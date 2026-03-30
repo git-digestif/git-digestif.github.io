@@ -83,7 +83,7 @@
     /* --- content pane --- */
     #main {
       flex: 1; overflow-y: auto; padding: 2em;
-      max-width: 52em;
+      max-width: 52em; outline: none;
       background: radial-gradient(ellipse at 50% 40%, #4a2818 0%, transparent 70%);
     }
     #content {
@@ -195,7 +195,7 @@
     </div>
     <img id="logo" src="images/git-digestif.png" alt="git digestif">
   </nav>
-  <div id="main">
+  <div id="main" tabindex="-1">
     <div class="nav-bar">
       <button class="nav-prev" disabled>◀ Previous</button>
       <button class="nav-next" disabled>Next ▶</button>
@@ -661,6 +661,7 @@
         content.innerHTML = marked.parse(text);
         fixBoldHeadings(content);
         updateNavButtons();
+        document.getElementById('main').focus();
       }).catch(function (err) {
         content.textContent = err.message;
       });
