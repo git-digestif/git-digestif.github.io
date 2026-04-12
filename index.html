@@ -1076,6 +1076,9 @@
         document.getElementById('error').textContent = err.message;
       });
     }
+    window.addEventListener('hashchange', function () {
+      if (location.hash && location.hash.length > 1) navigateToPath(location.hash);
+    });
     init();
   </script>
 </body>
