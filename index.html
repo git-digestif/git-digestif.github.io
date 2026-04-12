@@ -323,6 +323,7 @@
     const API   = 'https://api.github.com';
 
     let rootTreeSha = null;
+    var currentPath = null;
     const treeCache = {};
     var ghToken = localStorage.getItem('gh-token') || '';
 
@@ -462,8 +463,7 @@
       btn.addEventListener('click', function (e) {
         e.preventDefault();
         e.stopPropagation();
-        location.hash = hashPath;
-        navigateToPath(hashPath);
+        goTo(hashPath);
       });
       return btn;
     }
@@ -772,18 +772,12 @@
 
     prevBtns.forEach(function (btn) {
       btn.addEventListener('click', function () {
-        if (prevTarget) {
-          location.hash = prevTarget;
-          navigateToPath(prevTarget);
-        }
+        if (prevTarget) goTo(prevTarget);
       });
     });
     nextBtns.forEach(function (btn) {
       btn.addEventListener('click', function () {
-        if (nextTarget) {
-          location.hash = nextTarget;
-          navigateToPath(nextTarget);
-        }
+        if (nextTarget) goTo(nextTarget);
       });
     });
 
@@ -810,14 +804,12 @@
     }
 
     function switchDigestType(targetType) {
-      var hash = location.hash;
-      if (!hash || hash.length < 2) return;
-      var parsed = parseHash(hash);
+      if (!currentPath) return;
+      var parsed = parseHash(currentPath);
       var currentType = DIGEST_LABELS[parsed.file];
       if (currentType === targetType) return;
 
-      var stripped = hash.replace(/^#?\/?/, '');
-      lastHashByType[currentType] = stripped;
+      lastHashByType[currentType] = currentPath;
 
       var currentYM = parsed.pathParts.slice(0, 2).join('/');
       var saved = lastHashByType[targetType];
@@ -885,14 +877,12 @@
           break;
         case 'n':
           if (nextTarget) {
-            location.hash = nextTarget;
-            navigateToPath(nextTarget);
+            goTo(nextTarget);
           }
           break;
         case 'p':
           if (prevTarget) {
-            location.hash = prevTarget;
-            navigateToPath(prevTarget);
+            goTo(prevTarget);
           }
           break;
         case 'd':
@@ -946,13 +936,12 @@
       nextBtns.forEach(function (b) { b.disabled = true; });
       prevTarget = null;
       nextTarget = null;
-      var hash = location.hash;
-      if (!hash || hash.length < 2) return;
+      if (!currentPath) return;
 
-      adjacentDigest(hash, -1).then(function (path) {
+      adjacentDigest(currentPath, -1).then(function (path) {
         if (path) { prevTarget = path; prevBtns.forEach(function (b) { b.disabled = false; }); }
       });
-      adjacentDigest(hash, 1).then(function (path) {
+      adjacentDigest(currentPath, 1).then(function (path) {
         if (path) { nextTarget = path; nextBtns.forEach(function (b) { b.disabled = false; }); }
       });
     }
@@ -965,6 +954,7 @@
       var parts = parsed.pathParts;
       var file = parsed.file;
       if (parts.length < 2) return;
+      currentPath = path.replace(/^#?\/?/, '');
       var year = parts[0], month = parts[1], day = parts[2];
 
       // Suppress the automatic cascade during programmatic navigation;
@@ -1066,7 +1056,6 @@
             yearRoller.setEntries(years);
             return findRecentDigest(years).then(function (hash) {
               if (hash) {
-                location.hash = hash;
                 navigateToPath(hash);
               }
             });
