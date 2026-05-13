@@ -752,6 +752,12 @@
       content.textContent = 'Loading ' + name + '…';
       apiGet(repoPrefix + '/git/blobs/' + sha, 'application/vnd.github.raw+json').then(function (text) {
         content.classList.remove('fade-in');
+        // Some upstream digests omit the required space after ATX hashes
+        // (e.g. "##Notable" instead of "## Notable").  Fix this only for
+        // lines that sit between blank lines (or at the edges of the
+        // text), so mid-paragraph ## is left alone.
+        text = text.replace(/(^|\n\n)(#{2,6})([^\s#][^\n]*)(\n\n|\n?$)/g,
+          '$1$2 $3$4');
         content.innerHTML = marked.parse(text);
         void content.offsetWidth;
         content.classList.add('fade-in');
